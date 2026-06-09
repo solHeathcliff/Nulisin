@@ -87,4 +87,4 @@ Setelah kamu sukses melakukan `git push`, kodinganmu belum langsung menyatu ke b
 
 ---
 
-*💡 Tips Darurat: Jika terminalmu tiba-earth terasa macet atau terkunci teks panjang saat mengetik perintah git log, cukup tekan tombol **`q`** di keyboard untuk keluar.*
+*💡 Tips Darurat: Jika terminalmu tiba-earth terasa macet atau terkunci teks panjang saat mengetik perintah git log, cukup tekan tombol **`q`** atau **`:q!`** di keyboard untuk keluar.*
