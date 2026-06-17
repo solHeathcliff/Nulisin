@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme.dart';
 import '../../core/supabase_service.dart';
 
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _offset = 0;
   static const int _pageSize = 10;
   bool _hasMore = true;
+  RealtimeChannel? _realtimeChannel;
 
   @override
   void initState() {
@@ -32,11 +34,50 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchCtrl.addListener(_onSearch);
     _loadData();
     SupabaseService.instance.articleRefreshTrigger.addListener(_onArticleTriggerRefresh);
+    _setupRealtimeListener();
+  }
+
+  void _setupRealtimeListener() {
+    _realtimeChannel = Supabase.instance.client
+        .channel('public:db_changes')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'articles',
+          callback: (payload) {
+            if (mounted) {
+              _loadArticles(refresh: true, silent: true);
+              _loadCategories();
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'categories',
+          callback: (payload) {
+            if (mounted) {
+              _loadCategories();
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'reading_history',
+          callback: (payload) {
+            if (mounted) {
+              _loadArticles(refresh: true, silent: true);
+            }
+          },
+        );
+    _realtimeChannel!.subscribe();
   }
 
   void _onArticleTriggerRefresh() {
     if (mounted) {
-      _loadArticles(refresh: true);
+      _loadArticles(refresh: true, silent: true);
+      _loadCategories();
     }
   }
 
@@ -44,6 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _searchCtrl.dispose();
     SupabaseService.instance.articleRefreshTrigger.removeListener(_onArticleTriggerRefresh);
+    if (_realtimeChannel != null) {
+      Supabase.instance.client.removeChannel(_realtimeChannel!);
+    }
     super.dispose();
   }
 
@@ -59,20 +103,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final cats = await SupabaseService.instance.getCategories();
+    final cats = await SupabaseService.instance.getCategories(onlyPublished: true);
     if (mounted) setState(() => _categories = cats);
   }
 
-  Future<void> _loadArticles({bool refresh = false}) async {
+  Future<void> _loadArticles({bool refresh = false, bool silent = false}) async {
     if (refresh) {
-      setState(() { _isLoading = true; _offset = 0; _hasMore = true; });
+      setState(() {
+        _isLoading = silent ? _articles.isEmpty : true;
+        _offset = 0;
+        _hasMore = true;
+      });
     } else {
       if (_isLoadingMore || !_hasMore) return;
       setState(() => _isLoadingMore = true);
     }
 
     try {
-      final result = await SupabaseService.instance.getDiscoverFeed(
+      final result = await SupabaseService.instance.getHomeFeed(
         categoryId: _selectedCategoryId,
         limit: _pageSize,
         offset: _offset,
@@ -209,6 +257,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   hintStyle: AppTextStyles.bodyMd.copyWith(
                                       color: AppColors.onSurfaceVariant),
                                   border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
                                   filled: false,
                                   contentPadding: EdgeInsets.zero,
                                   isDense: true,
@@ -259,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text('Artikel Terbaru', style: AppTextStyles.headlineSm),
+                      child: Text('Baru dibaca', style: AppTextStyles.headlineSm),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -346,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final a = filtered[i];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
-                          child: _SupabaseArticleCard(
+                          child: SupabaseArticleCard(
                             article: a,
                             onTap: () {
                               // Navigate to article detail
@@ -367,10 +419,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _SupabaseArticleCard extends StatelessWidget {
+class SupabaseArticleCard extends StatelessWidget {
   final ArticleModel article;
   final VoidCallback onTap;
-  const _SupabaseArticleCard({required this.article, required this.onTap});
+  const SupabaseArticleCard({required this.article, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -387,28 +439,60 @@ class _SupabaseArticleCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image
-            if (article.coverImageUrl != null)
-              AspectRatio(
-                aspectRatio: 16 / 7,
-                child: CachedNetworkImage(
-                  imageUrl: article.coverImageUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: AppColors.sage),
-                  errorWidget: (_, __, ___) => Container(color: AppColors.sage),
-                ),
-              )
-            else
-              AspectRatio(
-                aspectRatio: 16 / 7,
-                child: Container(
-                  color: AppColors.sage,
-                  child: const Center(
-                    child: Icon(Icons.article_outlined,
-                        color: AppColors.primary, size: 40),
+            // Cover image with Bookmark overlay
+            Stack(
+              children: [
+                if (article.coverImageUrl != null)
+                  AspectRatio(
+                    aspectRatio: 16 / 7,
+                    child: CachedNetworkImage(
+                      imageUrl: article.coverImageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: AppColors.sage),
+                      errorWidget: (_, __, ___) => Container(color: AppColors.sage),
+                    ),
+                  )
+                else
+                  AspectRatio(
+                    aspectRatio: 16 / 7,
+                    child: Container(
+                      color: AppColors.sage,
+                      child: const Center(
+                        child: Icon(Icons.article_outlined,
+                            color: AppColors.primary, size: 40),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: ValueListenableBuilder<Set<String>>(
+                    valueListenable: SupabaseService.instance.bookmarkedIdsNotifier,
+                    builder: (context, savedIds, _) {
+                      final isSaved = savedIds.contains(article.id);
+                      return GestureDetector(
+                        onTap: () {
+                          SupabaseService.instance.toggleBookmark(article.id);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isSaved ? Icons.bookmark : Icons.bookmark_border,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
+              ],
+            ),
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(

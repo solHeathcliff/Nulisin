@@ -57,6 +57,7 @@ class ArticleModel {
   final DateTime? publishedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int viewCount;
   // Joined fields
   ProfileModel? author;
   List<CategoryModel> categories;
@@ -72,6 +73,7 @@ class ArticleModel {
     this.publishedAt,
     required this.createdAt,
     required this.updatedAt,
+    this.viewCount = 0,
     this.author,
     this.categories = const [],
     this.commentCount = 0,
@@ -103,6 +105,7 @@ class ArticleModel {
           : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      viewCount: (json['view_count'] as int?) ?? 0,
       author: author,
       categories: cats,
     );
@@ -211,6 +214,8 @@ class SupabaseService {
 
   final ValueNotifier<ProfileModel?> profileNotifier = ValueNotifier<ProfileModel?>(null);
   final ValueNotifier<int> articleRefreshTrigger = ValueNotifier<int>(0);
+  final ValueNotifier<Set<String>> bookmarkedIdsNotifier = ValueNotifier<Set<String>>({});
+  final ValueNotifier<List<ArticleModel>> bookmarkedArticlesNotifier = ValueNotifier<List<ArticleModel>>([]);
 
   // ─── AUTH ──────────────────────────────────────────────────
 
@@ -244,6 +249,8 @@ class SupabaseService {
   Future<void> signOut() async {
     await _client.auth.signOut();
     profileNotifier.value = null;
+    bookmarkedIdsNotifier.value = {};
+    bookmarkedArticlesNotifier.value = [];
   }
 
   Future<void> deleteCurrentUser() async {
@@ -262,6 +269,7 @@ class SupabaseService {
     if (data == null) return null;
     final profile = ProfileModel.fromJson(data);
     profileNotifier.value = profile;
+    fetchBookmarks();
     return profile;
   }
 
@@ -313,7 +321,204 @@ class SupabaseService {
     }
   }
 
+  // ─── BOOKMARKS ─────────────────────────────────────────────
+
+  Future<void> fetchBookmarks() async {
+    final userId = currentUser?.id;
+    if (userId == null) {
+      bookmarkedIdsNotifier.value = {};
+      bookmarkedArticlesNotifier.value = [];
+      return;
+    }
+    try {
+      final data = await _client
+          .from('bookmarks')
+          .select('article_id')
+          .eq('user_id', userId);
+      final ids = (data as List).map((e) => e['article_id'] as String).toSet();
+      bookmarkedIdsNotifier.value = ids;
+
+      if (ids.isEmpty) {
+        bookmarkedArticlesNotifier.value = [];
+        return;
+      }
+      // Ambil data artikel untuk semua yang disimpan
+      final idsList = ids.join(',');
+      final articlesData = await _client
+          .from('articles')
+          .select('''
+            *,
+            profiles(*),
+            article_categories(category_id, categories(*))
+          ''')
+          .eq('is_published', true)
+          .or('id.in.($idsList)');
+      bookmarkedArticlesNotifier.value =
+          (articlesData as List).map((e) => ArticleModel.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('fetchBookmarks error: $e');
+    }
+  }
+
+  Future<void> toggleBookmark(String articleId) async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+    final currentIds = Set<String>.from(bookmarkedIdsNotifier.value);
+    final isSaved = currentIds.contains(articleId);
+
+    try {
+      if (isSaved) {
+        // UNSAVE — hapus instan dari kedua notifier
+        currentIds.remove(articleId);
+        bookmarkedIdsNotifier.value = currentIds;
+        bookmarkedArticlesNotifier.value = bookmarkedArticlesNotifier.value
+            .where((a) => a.id != articleId)
+            .toList();
+        await _client
+            .from('bookmarks')
+            .delete()
+            .eq('user_id', userId)
+            .eq('article_id', articleId);
+      } else {
+        // SAVE — tambah ID instan, lalu fetch 1 artikel untuk data lengkap
+        currentIds.add(articleId);
+        bookmarkedIdsNotifier.value = currentIds;
+        await _client.from('bookmarks').insert({
+          'user_id': userId,
+          'article_id': articleId,
+        });
+        // Fetch hanya artikel yang baru disimpan
+        final articleData = await _client
+            .from('articles')
+            .select('''
+              *,
+              profiles(*),
+              article_categories(category_id, categories(*))
+            ''')
+            .eq('id', articleId)
+            .maybeSingle();
+        if (articleData != null) {
+          final article = ArticleModel.fromJson(articleData);
+          bookmarkedArticlesNotifier.value = [
+            article,
+            ...bookmarkedArticlesNotifier.value,
+          ];
+        }
+      }
+    } catch (e) {
+      debugPrint('toggleBookmark error: $e');
+      fetchBookmarks(); // Rollback on error
+    }
+  }
+
+  Future<List<ArticleModel>> getBookmarkedArticles() async {
+    // Return from notifier if already loaded, else fetch
+    if (bookmarkedArticlesNotifier.value.isNotEmpty ||
+        bookmarkedIdsNotifier.value.isEmpty) {
+      return bookmarkedArticlesNotifier.value;
+    }
+    await fetchBookmarks();
+    return bookmarkedArticlesNotifier.value;
+  }
+
   // ─── ARTICLES ─────────────────────────────────────────────
+
+  Future<List<ArticleModel>> getHomeFeed({
+    String? categoryId,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) return [];
+
+    try {
+      // 1. Get article IDs and read_at timestamps that the user has read
+      final historyData = await _client
+          .from('reading_history')
+          .select('article_id, read_at')
+          .eq('user_id', userId);
+      
+      final readHistoryMap = <String, DateTime>{};
+      for (final row in historyData as List) {
+        final articleId = row['article_id'] as String;
+        final readAtStr = row['read_at'] as String?;
+        if (readAtStr != null) {
+          readHistoryMap[articleId] = DateTime.parse(readAtStr);
+        }
+      }
+
+      final readArticleIds = readHistoryMap.keys.toList();
+
+      var query = _client.from('articles').select('''
+        *,
+        profiles(*),
+        article_categories(category_id, categories(*))
+      ''').eq('is_published', true);
+
+      if (readArticleIds.isEmpty) {
+        query = query.eq('author_id', userId);
+      } else {
+        final idsList = readArticleIds.join(',');
+        query = query.or('author_id.eq.$userId,id.in.($idsList)');
+      }
+
+      if (categoryId != null) {
+        // Filter through article_categories
+        final articleIds = await _client
+            .from('article_categories')
+            .select('article_id')
+            .eq('category_id', categoryId);
+        final ids = (articleIds as List).map((e) => e['article_id'] as String).toList();
+        if (ids.isEmpty) return [];
+        query = query.inFilter('id', ids);
+      }
+
+      final data = await query
+          .order('published_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      final articlesList = (data as List).map((e) => ArticleModel.fromJson(e)).toList();
+
+      // Sort by read_at (descending), falling back to published_at or createdAt
+      articlesList.sort((a, b) {
+        final timeA = readHistoryMap[a.id] ?? a.publishedAt ?? a.createdAt;
+        final timeB = readHistoryMap[b.id] ?? b.publishedAt ?? b.createdAt;
+        return timeB.compareTo(timeA);
+      });
+
+      return articlesList;
+    } catch (e) {
+      debugPrint('getHomeFeed error: $e');
+      // Fallback to only user's own articles on error
+      var query = _client.from('articles').select('''
+        *,
+        profiles(*),
+        article_categories(category_id, categories(*))
+      ''').eq('author_id', userId).eq('is_published', true);
+
+      final data = await query
+          .order('published_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return (data as List).map((e) => ArticleModel.fromJson(e)).toList();
+    }
+  }
+
+  Future<void> recordReadingHistory(String articleId) async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+    try {
+      await _client.from('reading_history').upsert({
+        'user_id': userId,
+        'article_id': articleId,
+        'read_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id,article_id');
+      articleRefreshTrigger.value++;
+    } catch (e) {
+      debugPrint('recordReadingHistory error: $e');
+    }
+  }
+
 
   Future<List<ArticleModel>> getDiscoverFeed({
     String? categoryId,
@@ -349,10 +554,19 @@ class SupabaseService {
     }
 
     final data = await query
+        .order('view_count', ascending: false)
         .order('published_at', ascending: false)
         .range(offset, offset + limit - 1);
 
     return (data as List).map((e) => ArticleModel.fromJson(e)).toList();
+  }
+
+  Future<void> incrementViewCount(String articleId) async {
+    try {
+      await _client.rpc('increment_view_count', params: {'article_id': articleId});
+    } catch (e) {
+      debugPrint('incrementViewCount error: $e');
+    }
   }
 
   Future<ArticleModel?> getArticleById(String articleId) async {
@@ -501,14 +715,68 @@ class SupabaseService {
 
   // ─── CATEGORIES ───────────────────────────────────────────
 
-  Future<List<CategoryModel>> getCategories() async {
-    final data = await _client.from('categories').select().order('name');
-    return (data as List).map((e) => CategoryModel.fromJson(e)).toList();
+  Future<List<CategoryModel>> getCategories({bool onlyPublished = false}) async {
+    if (onlyPublished) {
+      final data = await _client.from('categories').select('''
+        id, name, description, cover_image_url,
+        article_categories(
+          articles(is_published)
+        )
+      ''').order('name');
+
+      final defaultCategories = {
+        'Filsafat', 'Teknologi', 'Sastra', 'Esai',
+        'Sains', 'Budaya', 'Sejarah', 'Kesehatan'
+      };
+
+      final list = <CategoryModel>[];
+      for (final row in data as List) {
+        final name = row['name'] as String;
+        if (defaultCategories.contains(name)) {
+          list.add(CategoryModel.fromJson(row));
+          continue;
+        }
+
+        bool hasPublishedArticle = false;
+        final artCats = row['article_categories'] as List?;
+        if (artCats != null) {
+          for (final ac in artCats) {
+            final article = ac['articles'] as Map<String, dynamic>?;
+            if (article != null && article['is_published'] == true) {
+              hasPublishedArticle = true;
+              break;
+            }
+          }
+        }
+
+        if (hasPublishedArticle) {
+          list.add(CategoryModel.fromJson(row));
+        }
+      }
+      return list;
+    } else {
+      final data = await _client.from('categories').select().order('name');
+      return (data as List).map((e) => CategoryModel.fromJson(e)).toList();
+    }
   }
 
   Future<CategoryModel> createCategory({required String name, String? description}) async {
+    final trimmedName = name.trim();
+    
+    // Cari apakah kategori dengan nama yang sama sudah ada (case-insensitive)
+    final existing = await _client
+        .from('categories')
+        .select()
+        .ilike('name', trimmedName)
+        .maybeSingle();
+
+    if (existing != null) {
+      return CategoryModel.fromJson(existing);
+    }
+
+    // Jika belum ada, buat baru
     final data = await _client.from('categories').insert({
-      'name': name,
+      'name': trimmedName,
       if (description != null) 'description': description,
     }).select().single();
     return CategoryModel.fromJson(data);

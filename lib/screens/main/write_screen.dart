@@ -12,6 +12,7 @@ import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_quill/markdown_quill.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme.dart';
 import '../../core/supabase_service.dart';
 
@@ -34,6 +35,7 @@ class _WriteScreenState extends State<WriteScreen> {
   List<CategoryModel> _categories = [];
   bool _isPublishing = false;
   bool _isPreviewMode = false;
+  RealtimeChannel? _categoriesChannel;
 
   XFile? _pickedImageFile;
   Uint8List? _webImageBytes;
@@ -82,6 +84,7 @@ class _WriteScreenState extends State<WriteScreen> {
   void initState() {
     super.initState();
     _loadCategories();
+    _setupCategoriesListener();
 
     final content = widget.editArticle?.content ?? '';
     Delta delta;
@@ -111,6 +114,22 @@ class _WriteScreenState extends State<WriteScreen> {
       _existingCoverUrl = widget.editArticle!.coverImageUrl;
       _selectedDate = widget.editArticle!.createdAt;
     }
+  }
+
+  void _setupCategoriesListener() {
+    _categoriesChannel = Supabase.instance.client
+        .channel('public:categories_write')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'categories',
+          callback: (payload) {
+            if (mounted) {
+              _loadCategories();
+            }
+          },
+        );
+    _categoriesChannel!.subscribe();
   }
 
   Future<void> _loadCategories() async {
@@ -159,6 +178,9 @@ class _WriteScreenState extends State<WriteScreen> {
     _controller.dispose();
     _newTopicCtrl.dispose();
     _editorFocusNode.dispose();
+    if (_categoriesChannel != null) {
+      Supabase.instance.client.removeChannel(_categoriesChannel!);
+    }
     super.dispose();
   }
 
@@ -430,7 +452,7 @@ class _WriteScreenState extends State<WriteScreen> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: _isPublishing ? null : () async {
                     setSheet(() => _isPublishing = true);
                     try {
@@ -496,11 +518,10 @@ class _WriteScreenState extends State<WriteScreen> {
                       }
                     }
                   },
-                  icon: _isPublishing
+                  child: _isPublishing
                       ? const SizedBox(width: 16, height: 16,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.rocket_launch_outlined, size: 18),
-                  label: const Text('Terbitkan Sekarang'),
+                      : const Text('Terbitkan Sekarang'),
                 ),
               ),
               const SizedBox(height: 10),
@@ -647,6 +668,29 @@ class _WriteScreenState extends State<WriteScreen> {
                           onPressed: isCreating ? null : () async {
                             final text = _newTopicCtrl.text.trim();
                             if (text.isEmpty) return;
+
+                            // Cek lokal terlebih dahulu
+                            final existingLocal = _categories.firstWhere(
+                              (c) => c.name.toLowerCase() == text.toLowerCase(),
+                              orElse: () => CategoryModel(id: '', name: ''),
+                            );
+
+                            if (existingLocal.id.isNotEmpty) {
+                              setState(() {
+                                _selectedCategoryId = existingLocal.id;
+                                _selectedCategoryName = existingLocal.name;
+                              });
+                              _newTopicCtrl.clear();
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Topik "${existingLocal.name}" sudah ada dan otomatis terpilih!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+
                             setSheetState(() => isCreating = true);
                             try {
                               final newCat = await SupabaseService.instance.createCategory(name: text);
@@ -660,7 +704,7 @@ class _WriteScreenState extends State<WriteScreen> {
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Topik "$text" berhasil ditambahkan dan dipilih!'),
+                                    content: Text('Topik "${newCat.name}" berhasil ditambahkan dan dipilih!'),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -1256,6 +1300,10 @@ class _WriteScreenState extends State<WriteScreen> {
                             hintStyle: AppTextStyles.headlineLg.copyWith(
                                 fontSize: 26, color: AppColors.outlineVariant),
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
                             filled: false,
                             contentPadding: EdgeInsets.zero,
                           ),

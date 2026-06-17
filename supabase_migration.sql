@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.articles (
   cover_image_url  TEXT,
   is_published     BOOLEAN NOT NULL DEFAULT TRUE,
   published_at     TIMESTAMPTZ,
+  view_count       INTEGER NOT NULL DEFAULT 0,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -55,6 +56,22 @@ CREATE TABLE IF NOT EXISTS public.comments (
   content     TEXT NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── TABEL BOOKMARKS (many-to-many) ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.bookmarks (
+  user_id      UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  article_id   UUID NOT NULL REFERENCES public.articles(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, article_id)
+);
+
+-- ─── TABEL READING_HISTORY ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reading_history (
+  user_id      UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  article_id   UUID NOT NULL REFERENCES public.articles(id) ON DELETE CASCADE,
+  read_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, article_id)
 );
 
 -- ─── FUNCTIONS & TRIGGERS ────────────────────────────────────────────
@@ -115,6 +132,16 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Auto-increment view count on article detail page view
+CREATE OR REPLACE FUNCTION public.increment_view_count(article_id UUID)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE public.articles
+  SET view_count = view_count + 1
+  WHERE id = article_id;
+END;
+$$;
+
 -- ─── ROW LEVEL SECURITY (RLS) ────────────────────────────────────────
 
 -- Profiles: semua orang bisa lihat, hanya pemilik yang bisa edit
@@ -153,9 +180,10 @@ CREATE POLICY "Authors can delete their own articles."
   ON public.articles FOR DELETE
   USING (auth.uid() = author_id);
 
--- Categories: semua bisa lihat, tidak ada write lewat client
+-- Categories: semua bisa lihat, semua user terotentikasi bisa tambah
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Categories viewable by everyone." ON public.categories;
+DROP POLICY IF EXISTS "Authenticated users can create categories." ON public.categories;
 
 CREATE POLICY "Categories viewable by everyone."
   ON public.categories FOR SELECT USING (TRUE);
@@ -193,6 +221,36 @@ CREATE POLICY "Authenticated users can create comments."
 CREATE POLICY "Users can delete their own comments."
   ON public.comments FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Bookmarks: hanya pemilik yang bisa melihat dan mengelola bookmarks sendiri
+ALTER TABLE public.bookmarks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own bookmarks." ON public.bookmarks;
+DROP POLICY IF EXISTS "Users can insert their own bookmarks." ON public.bookmarks;
+DROP POLICY IF EXISTS "Users can delete their own bookmarks." ON public.bookmarks;
+
+CREATE POLICY "Users can view their own bookmarks."
+  ON public.bookmarks FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own bookmarks."
+  ON public.bookmarks FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own bookmarks."
+  ON public.bookmarks FOR DELETE USING (auth.uid() = user_id);
+
+-- Reading History: hanya pemilik yang bisa melihat dan mengelola history sendiri
+ALTER TABLE public.reading_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own reading history." ON public.reading_history;
+DROP POLICY IF EXISTS "Users can insert or update their own reading history." ON public.reading_history;
+DROP POLICY IF EXISTS "Users can update their own reading history." ON public.reading_history;
+
+CREATE POLICY "Users can view their own reading history."
+  ON public.reading_history FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert or update their own reading history."
+  ON public.reading_history FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own reading history."
+  ON public.reading_history FOR UPDATE USING (auth.uid() = user_id);
 
 -- ─── STORAGE BUCKETS ─────────────────────────────────────────────────
 

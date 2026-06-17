@@ -5,6 +5,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/gestures.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme.dart';
 import '../../core/supabase_service.dart';
 import 'write_screen.dart';
@@ -23,16 +24,47 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _isLoading = true;
   bool _isSendingComment = false;
   final _commentCtrl = TextEditingController();
+  RealtimeChannel? _commentsChannel;
 
   @override
   void initState() {
     super.initState();
     _loadArticle();
+    _setupCommentsListener();
+  }
+
+  void _setupCommentsListener() {
+    _commentsChannel = Supabase.instance.client
+        .channel('public:comments:${widget.articleId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'comments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'article_id',
+            value: widget.articleId,
+          ),
+          callback: (payload) async {
+            try {
+              final comments = await SupabaseService.instance.getComments(widget.articleId);
+              if (mounted) {
+                setState(() {
+                  _comments = comments;
+                });
+              }
+            } catch (_) {}
+          },
+        );
+    _commentsChannel!.subscribe();
   }
 
   @override
   void dispose() {
     _commentCtrl.dispose();
+    if (_commentsChannel != null) {
+      Supabase.instance.client.removeChannel(_commentsChannel!);
+    }
     super.dispose();
   }
 
@@ -48,6 +80,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           _isLoading = false;
         });
       }
+      // Increment view count and record reading history silently in background
+      SupabaseService.instance.incrementViewCount(widget.articleId);
+      SupabaseService.instance.recordReadingHistory(widget.articleId);
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -448,6 +483,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         hintStyle: AppTextStyles.bodyMd
                             .copyWith(color: AppColors.onSurfaceVariant),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
                         filled: false,
                         contentPadding: EdgeInsets.zero,
                         isDense: true,
