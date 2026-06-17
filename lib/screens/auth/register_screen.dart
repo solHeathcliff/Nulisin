@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+<<<<<<< HEAD
 import '../../core/theme.dart';
+=======
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/theme.dart';
+import '../../core/supabase_service.dart';
+>>>>>>> Back-End
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,6 +23,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
+<<<<<<< HEAD
+=======
+  String? _errorMsg;
+>>>>>>> Back-End
 
   @override
   void dispose() {
@@ -27,6 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _submit() async {
+<<<<<<< HEAD
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 1200));
@@ -34,6 +45,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _isLoading = false);
       context.push('/complete-profile');
     }
+=======
+    String emailVal = _emailCtrl.text.trim();
+    if (emailVal.isNotEmpty && !emailVal.contains('@')) {
+      emailVal = '$emailVal@gmail.com';
+      _emailCtrl.text = emailVal;
+    }
+
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _isLoading = true; _errorMsg = null; });
+
+    try {
+      // Gunakan bagian depan email sebagai nama sementara
+      final tempName = emailVal.split('@').first;
+      await SupabaseService.instance.signUp(
+        email: emailVal,
+        password: _passCtrl.text,
+        fullName: tempName,
+      );
+      if (mounted) context.push('/complete-profile');
+    } on AuthException catch (e) {
+      setState(() => _errorMsg = _mapAuthError(e.message));
+    } catch (e) {
+      setState(() => _errorMsg = 'Terjadi kesalahan. Silakan coba lagi.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _mapAuthError(String msg) {
+    if (msg.contains('User already registered')) return 'Email ini sudah terdaftar.';
+    if (msg.contains('Password should be')) return 'Password minimal 6 karakter.';
+    if (msg.contains('Unable to validate email')) return 'Format email tidak valid.';
+    return msg;
+>>>>>>> Back-End
   }
 
   @override
@@ -89,6 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   style: AppTextStyles.bodyMd,
+<<<<<<< HEAD
                   decoration: const InputDecoration(
                     hintText: 'nama@email.com',
                     prefixIcon: Icon(Icons.mail_outline, color: AppColors.secondary, size: 20),
@@ -96,6 +142,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Email tidak boleh kosong';
                     if (!v.contains('@')) return 'Format email tidak valid';
+=======
+                  onChanged: (v) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'nama_pengguna',
+                    suffixText: _emailCtrl.text.contains('@') ? null : '@gmail.com',
+                    suffixStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                    prefixIcon: const Icon(Icons.mail_outline, color: AppColors.secondary, size: 20),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Email tidak boleh kosong';
+                    if (v.contains('@') && !v.contains('.')) return 'Format email tidak valid';
+>>>>>>> Back-End
                     return null;
                   },
                 ),
@@ -146,6 +204,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 36),
+<<<<<<< HEAD
+=======
+                if (_errorMsg != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_errorMsg!,
+                              style: AppTextStyles.labelLg.copyWith(
+                                  color: AppColors.error, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+>>>>>>> Back-End
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

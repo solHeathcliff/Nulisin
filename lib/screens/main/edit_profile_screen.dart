@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+<<<<<<< HEAD
 import '../../core/theme.dart';
+=======
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme.dart';
+import '../../core/supabase_service.dart';
+>>>>>>> Back-End
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -12,11 +22,68 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+<<<<<<< HEAD
   final _nameCtrl = TextEditingController(text: 'Amara Prasetya');
   final _profesiCtrl = TextEditingController(text: 'Penulis & Esais');
   final _bioCtrl = TextEditingController(
       text: 'Mencurahkan pikiran ke dalam kata-kata. Menulis tentang filsafat, budaya, dan kehidupan sehari-hari.');
   bool _isSaving = false;
+=======
+  final _nameCtrl = TextEditingController();
+  final _profesiCtrl = TextEditingController();
+  final _bioCtrl = TextEditingController();
+  bool _isSaving = false;
+  bool _isLoading = true;
+
+  XFile? _avatarFile;
+  Uint8List? _avatarWebBytes;
+  String? _currentAvatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final userId = SupabaseService.instance.currentUser?.id;
+    if (userId == null) return;
+    final profile = await SupabaseService.instance.getProfile(userId);
+    if (mounted && profile != null) {
+      setState(() {
+        _nameCtrl.text = profile.fullName;
+        _profesiCtrl.text = profile.profession ?? '';
+        _bioCtrl.text = profile.bio ?? '';
+        _currentAvatarUrl = profile.avatarUrl;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickAvatar() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (picked != null) {
+        if (kIsWeb) {
+          final bytes = await picked.readAsBytes();
+          setState(() {
+            _avatarFile = picked;
+            _avatarWebBytes = bytes;
+          });
+        } else {
+          setState(() {
+            _avatarFile = picked;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking avatar: $e');
+    }
+  }
+>>>>>>> Back-End
 
   @override
   void dispose() {
@@ -29,6 +96,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
+<<<<<<< HEAD
     await Future.delayed(const Duration(milliseconds: 1200));
     if (mounted) {
       setState(() => _isSaving = false);
@@ -43,6 +111,54 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
       context.pop();
+=======
+    try {
+      final userId = SupabaseService.instance.currentUser!.id;
+
+      String? avatarUrl = _currentAvatarUrl;
+      if (_avatarFile != null) {
+        final uploadResult = await SupabaseService.instance.uploadAvatar(
+          userId,
+          kIsWeb ? _avatarWebBytes : File(_avatarFile!.path),
+        );
+        if (uploadResult != null) {
+          avatarUrl = uploadResult;
+        }
+      }
+
+      await SupabaseService.instance.upsertProfile(
+        userId: userId,
+        fullName: _nameCtrl.text.trim(),
+        profession: _profesiCtrl.text.trim().isEmpty ? null : _profesiCtrl.text.trim(),
+        bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
+        avatarUrl: avatarUrl,
+      );
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Profil berhasil diperbarui',
+                style: GoogleFonts.hankenGrotesk(fontSize: 14)),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal menyimpan. Coba lagi.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+>>>>>>> Back-End
     }
   }
 
@@ -68,12 +184,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
 
     if (confirm == true && mounted) {
+<<<<<<< HEAD
       context.go('/');
+=======
+      setState(() => _isLoading = true);
+      try {
+        await SupabaseService.instance.deleteCurrentUser();
+        if (mounted) context.go('/');
+      } catch (e) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal menghapus akun: $e',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 14)),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+      }
+>>>>>>> Back-End
     }
   }
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
+=======
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+>>>>>>> Back-End
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -111,6 +257,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               // Avatar section
               Center(
+<<<<<<< HEAD
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -132,6 +279,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     GestureDetector(
                       onTap: () {},
                       child: Container(
+=======
+                child: GestureDetector(
+                  onTap: _pickAvatar,
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          color: AppColors.sage,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.outline, width: 2),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: _avatarFile != null
+                            ? (kIsWeb
+                                ? Image.memory(_avatarWebBytes!, fit: BoxFit.cover)
+                                : Image.file(File(_avatarFile!.path), fit: BoxFit.cover))
+                            : (_currentAvatarUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: _currentAvatarUrl!,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => const Center(
+                                        child: CircularProgressIndicator(strokeWidth: 2)),
+                                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                                  )
+                                : Center(
+                                    child: Text(
+                                        _nameCtrl.text.isNotEmpty
+                                            ? _nameCtrl.text[0].toUpperCase()
+                                            : '?',
+                                        style: GoogleFonts.sourceSerif4(
+                                            fontSize: 40,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.primary)),
+                                  )),
+                      ),
+                      Container(
+>>>>>>> Back-End
                         width: 32, height: 32,
                         decoration: BoxDecoration(
                           color: AppColors.primary,
@@ -140,18 +327,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
                       ),
+<<<<<<< HEAD
                     ),
                   ],
+=======
+                    ],
+                  ),
+>>>>>>> Back-End
                 ),
               ),
               const SizedBox(height: 8),
               Center(
+<<<<<<< HEAD
                 child: TextButton(
                   onPressed: () {},
                   child: Text('Ganti Foto',
                       style: GoogleFonts.hankenGrotesk(
                           fontSize: 13, fontWeight: FontWeight.w600,
                           color: AppColors.primary)),
+=======
+                child: Text(
+                  'Ganti Foto',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+>>>>>>> Back-End
                 ),
               ),
               const SizedBox(height: 28),
@@ -205,6 +407,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   counterStyle: GoogleFonts.hankenGrotesk(
                       fontSize: 12, color: AppColors.onSurfaceVariant),
                 ),
+<<<<<<< HEAD
+=======
+                validator: (v) {
+                  if (v != null && v.length > 200) {
+                    return 'Bio tidak boleh lebih dari 200 karakter';
+                  }
+                  return null;
+                },
+>>>>>>> Back-End
               ),
               const SizedBox(height: 28),
 

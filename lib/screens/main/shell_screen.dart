@@ -17,7 +17,11 @@ class ShellScreen extends StatefulWidget {
 }
 
 class _ShellScreenState extends State<ShellScreen> {
+<<<<<<< HEAD
   late int _currentIndex;
+=======
+  int _currentIndex = 0;
+>>>>>>> Back-End
 
   @override
   void initState() {
@@ -25,6 +29,19 @@ class _ShellScreenState extends State<ShellScreen> {
     _currentIndex = widget.initialTab;
   }
 
+<<<<<<< HEAD
+=======
+  @override
+  void didUpdateWidget(ShellScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab) {
+      setState(() {
+        _currentIndex = widget.initialTab;
+      });
+    }
+  }
+
+>>>>>>> Back-End
   List<Widget> get _screens => [
     const HomeScreen(),
     const ExploreScreen(),

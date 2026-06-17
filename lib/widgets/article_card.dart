@@ -34,7 +34,11 @@ class ArticleCard extends StatefulWidget {
 }
 
 class _ArticleCardState extends State<ArticleCard> {
+<<<<<<< HEAD
   late bool _bookmarked;
+=======
+  bool _bookmarked = false;
+>>>>>>> Back-End
 
   @override
   void initState() {
@@ -252,7 +256,11 @@ class ArticleListTile extends StatefulWidget {
 }
 
 class _ArticleListTileState extends State<ArticleListTile> {
+<<<<<<< HEAD
   late bool _bookmarked;
+=======
+  bool _bookmarked = false;
+>>>>>>> Back-End
 
   @override
   void initState() {

@@ -3,6 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+<<<<<<< HEAD
+=======
+  app_links
+  file_selector_windows
+  url_launcher_windows
+>>>>>>> Back-End
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

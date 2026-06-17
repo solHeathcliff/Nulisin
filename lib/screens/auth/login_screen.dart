@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+<<<<<<< HEAD
 import '../../core/theme.dart';
+=======
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/theme.dart';
+import '../../core/supabase_service.dart';
+>>>>>>> Back-End
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   bool _obscurePass = true;
   bool _isLoading = false;
+<<<<<<< HEAD
+=======
+  String? _errorMsg;
+>>>>>>> Back-End
 
   @override
   void dispose() {
@@ -25,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _submit() async {
+<<<<<<< HEAD
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 1200));
@@ -32,6 +43,41 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
       context.go('/main');
     }
+=======
+    String emailVal = _emailCtrl.text.trim();
+    if (emailVal.isNotEmpty && !emailVal.contains('@')) {
+      emailVal = '$emailVal@gmail.com';
+      _emailCtrl.text = emailVal;
+    }
+
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _isLoading = true; _errorMsg = null; });
+
+    try {
+      await SupabaseService.instance.signIn(
+        email: emailVal,
+        password: _passCtrl.text,
+      );
+      if (mounted) context.go('/main');
+    } on AuthException catch (e) {
+      setState(() {
+        _errorMsg = _mapAuthError(e.message);
+      });
+    } catch (e) {
+      setState(() {
+        _errorMsg = 'Terjadi kesalahan. Silakan coba lagi.';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _mapAuthError(String msg) {
+    if (msg.contains('Invalid login credentials')) return 'Email atau kata sandi salah.';
+    if (msg.contains('Email not confirmed')) return 'Email belum dikonfirmasi. Cek inbox Anda.';
+    if (msg.contains('Too many requests')) return 'Terlalu banyak percobaan. Tunggu sebentar.';
+    return msg;
+>>>>>>> Back-End
   }
 
   @override
@@ -86,13 +132,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   style: AppTextStyles.bodyMd,
+<<<<<<< HEAD
                   decoration: InputDecoration(
                     hintText: 'nama@email.com',
+=======
+                  onChanged: (v) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'nama_pengguna',
+                    suffixText: _emailCtrl.text.contains('@') ? null : '@gmail.com',
+                    suffixStyle: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+>>>>>>> Back-End
                     prefixIcon: const Icon(Icons.mail_outline, color: AppColors.secondary, size: 20),
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Email tidak boleh kosong';
+<<<<<<< HEAD
                     if (!v.contains('@')) return 'Format email tidak valid';
+=======
+                    if (v.contains('@') && !v.contains('.')) return 'Format email tidak valid';
+>>>>>>> Back-End
                     return null;
                   },
                 ),
@@ -134,6 +192,31 @@ class _LoginScreenState extends State<LoginScreen> {
                         )),
                   ),
                 ),
+<<<<<<< HEAD
+=======
+                if (_errorMsg != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_errorMsg!,
+                              style: AppTextStyles.labelLg.copyWith(
+                                  color: AppColors.error, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+>>>>>>> Back-End
                 const SizedBox(height: 32),
                 // Submit button
                 SizedBox(
@@ -145,6 +228,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text('Masuk'),
                   ),
+<<<<<<< HEAD
+=======
+
+>>>>>>> Back-End
                 ),
                 const SizedBox(height: 32),
                 Row(
