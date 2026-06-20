@@ -134,25 +134,116 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _deleteAccount() async {
+    final passwordCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isVerifying = false;
+    String? localError;
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceBright,
-        title: Text('Hapus Akun?', style: GoogleFonts.sourceSerif4(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 20)),
-        content: Text('Apakah Anda yakin ingin menghapus akun ini secara permanen? Semua data dan artikel Anda akan hilang dan tidak dapat dipulihkan.', style: GoogleFonts.hankenGrotesk(fontSize: 15, color: AppColors.onSurface)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600, color: AppColors.primary)),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surfaceBright,
+          title: Text(
+            'Konfirmasi Hapus Akun',
+            style: GoogleFonts.sourceSerif4(
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+              fontSize: 20,
+            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Semua data Anda akan dihapus secara permanen. Silakan masukkan kata sandi Anda untuk konfirmasi.',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 14, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  style: GoogleFonts.hankenGrotesk(fontSize: 15, color: AppColors.onSurface),
+                  decoration: const InputDecoration(
+                    hintText: 'Kata Sandi Anda',
+                    prefixIcon: Icon(Icons.lock_outline_rounded, size: 20),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Kata sandi wajib diisi';
+                    return null;
+                  },
+                ),
+                if (localError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    localError!,
+                    style: GoogleFonts.hankenGrotesk(fontSize: 13, color: AppColors.error),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: isVerifying ? null : () => Navigator.pop(ctx, false),
+              child: Text(
+                'Batal',
+                style: GoogleFonts.hankenGrotesk(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: isVerifying
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        isVerifying = true;
+                        localError = null;
+                      });
+                      try {
+                        final email = SupabaseService.instance.currentUser?.email;
+                        if (email == null) throw Exception('Email tidak ditemukan');
+                        
+                        await SupabaseService.instance.signIn(
+                          email: email,
+                          password: passwordCtrl.text,
+                        );
+
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx, true);
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          isVerifying = false;
+                          localError = 'Kata sandi salah atau koneksi bermasalah.';
+                        });
+                      }
+                    },
+              child: isVerifying
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Hapus'),
+            ),
+          ],
+        ),
       ),
     );
+
+    passwordCtrl.dispose();
 
     if (confirm == true && mounted) {
       setState(() => _isLoading = true);
@@ -164,8 +255,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal menghapus akun: $e',
-                  style: GoogleFonts.hankenGrotesk(fontSize: 14)),
+              content: Text(
+                'Gagal menghapus akun: ${SupabaseService.mapException(e)}',
+                style: GoogleFonts.hankenGrotesk(fontSize: 14),
+              ),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -344,19 +437,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
 
 
-              // Save button (bottom)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _save,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Simpan Perubahan'),
-                ),
-              ),
-              const SizedBox(height: 16),
               // Delete Account button
               SizedBox(
                 width: double.infinity,

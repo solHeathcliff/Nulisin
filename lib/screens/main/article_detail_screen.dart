@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter/gestures.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
@@ -207,21 +207,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Category chip
+                        // Category chips
                         if (article.categories.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.sage,
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Text(
-                              article.categoryName.toUpperCase(),
-                              style: AppTextStyles.labelSm.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700),
-                            ),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: article.categories.map((cat) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.sage,
+                                  borderRadius: BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  cat.name.toUpperCase(),
+                                  style: AppTextStyles.labelSm.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         const SizedBox(height: 16),
                         // Title

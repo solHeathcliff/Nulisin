@@ -405,18 +405,41 @@ class _ProfileArticleCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
+                  if (article.categories.isNotEmpty)
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: article.categories.map((cat) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.sage,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            cat.name.toUpperCase(),
+                            style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
                         color: AppColors.sage,
-                        borderRadius: BorderRadius.circular(100)),
-                    child: Text(article.categoryName.toUpperCase(),
-                        style: AppTextStyles.labelSm.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
-                  ),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text('UMUM',
+                          style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
+                    ),
                   const SizedBox(height: 8),
                   Text(article.title,
                       style: AppTextStyles.headlineSm.copyWith(fontSize: 16),
@@ -492,18 +515,41 @@ class _DraftCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
+                  if (article.categories.isNotEmpty)
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: article.categories.map((cat) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.sage,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            cat.name.toUpperCase(),
+                            style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
                         color: AppColors.sage,
-                        borderRadius: BorderRadius.circular(100)),
-                    child: Text(article.categoryName.toUpperCase(),
-                        style: AppTextStyles.labelSm.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
-                  ),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text('UMUM',
+                          style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
+                    ),
                   const SizedBox(height: 8),
                   Text(article.title,
                       style: AppTextStyles.headlineSm.copyWith(fontSize: 16),

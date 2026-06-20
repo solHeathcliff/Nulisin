@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
@@ -30,8 +30,8 @@ class _WriteScreenState extends State<WriteScreen> {
   final _newTopicCtrl = TextEditingController();
   final _editorFocusNode = FocusNode();
   DateTime? _selectedDate;
-  String? _selectedCategoryId;
-  String? _selectedCategoryName;
+  List<String> _selectedCategoryIds = [];
+  bool _isLoadingCategories = true;
   List<CategoryModel> _categories = [];
   bool _isPublishing = false;
   bool _isPreviewMode = false;
@@ -134,15 +134,12 @@ class _WriteScreenState extends State<WriteScreen> {
 
   Future<void> _loadCategories() async {
     final cats = await SupabaseService.instance.getCategories();
-    if (mounted && cats.isNotEmpty) {
+    if (mounted) {
       setState(() {
         _categories = cats;
+        _isLoadingCategories = false;
         if (widget.editArticle != null) {
-          final artCats = widget.editArticle!.categories;
-          if (artCats.isNotEmpty) {
-            _selectedCategoryId = artCats.first.id;
-            _selectedCategoryName = artCats.first.name;
-          }
+          _selectedCategoryIds = widget.editArticle!.categories.map((c) => c.id).toList();
         }
       });
     }
@@ -467,7 +464,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           content: bodyText.trim().isEmpty ? '...' : bodyText.trim(),
                           isPublished: true,
                           clearCoverImage: _existingCoverUrl == null && _pickedImageFile == null,
-                          categoryIds: _selectedCategoryId != null ? [_selectedCategoryId!] : [],
+                          categoryIds: _selectedCategoryIds,
                         );
                       } else {
                         article = await SupabaseService.instance.createArticle(
@@ -476,7 +473,7 @@ class _WriteScreenState extends State<WriteScreen> {
                               : _titleCtrl.text.trim(),
                           content: bodyText.trim().isEmpty ? '...' : bodyText.trim(),
                           isPublished: true,
-                          categoryIds: _selectedCategoryId != null ? [_selectedCategoryId!] : [],
+                          categoryIds: _selectedCategoryIds,
                         );
                       }
 
@@ -510,7 +507,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Gagal menerbitkan: $e'),
+                            content: Text('Gagal menerbitkan: ${SupabaseService.mapException(e)}'),
                             backgroundColor: AppColors.error,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -542,7 +539,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           content: bodyText.trim().isEmpty ? '...' : bodyText.trim(),
                           isPublished: false,
                           clearCoverImage: _existingCoverUrl == null && _pickedImageFile == null,
-                          categoryIds: _selectedCategoryId != null ? [_selectedCategoryId!] : [],
+                          categoryIds: _selectedCategoryIds,
                         );
                       } else {
                         article = await SupabaseService.instance.createArticle(
@@ -551,7 +548,7 @@ class _WriteScreenState extends State<WriteScreen> {
                               : _titleCtrl.text.trim(),
                           content: bodyText.trim().isEmpty ? '...' : bodyText.trim(),
                           isPublished: false,
-                          categoryIds: _selectedCategoryId != null ? [_selectedCategoryId!] : [],
+                          categoryIds: _selectedCategoryIds,
                         );
                       }
 
@@ -585,7 +582,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Gagal menyimpan draft: $e'),
+                            content: Text('Gagal menyimpan draft: ${SupabaseService.mapException(e)}'),
                             backgroundColor: AppColors.error,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -676,15 +673,17 @@ class _WriteScreenState extends State<WriteScreen> {
                             );
 
                             if (existingLocal.id.isNotEmpty) {
-                              setState(() {
-                                _selectedCategoryId = existingLocal.id;
-                                _selectedCategoryName = existingLocal.name;
+                              setSheetState(() {
+                                setState(() {
+                                  if (!_selectedCategoryIds.contains(existingLocal.id)) {
+                                    _selectedCategoryIds.add(existingLocal.id);
+                                  }
+                                });
                               });
                               _newTopicCtrl.clear();
-                              Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Topik "${existingLocal.name}" sudah ada dan otomatis terpilih!'),
+                                  content: Text('Topik "${existingLocal.name}" sudah ada dan dipilih!'),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -695,13 +694,15 @@ class _WriteScreenState extends State<WriteScreen> {
                             try {
                               final newCat = await SupabaseService.instance.createCategory(name: text);
                               await _loadCategories();
-                              setState(() {
-                                _selectedCategoryId = newCat.id;
-                                _selectedCategoryName = newCat.name;
+                              setSheetState(() {
+                                setState(() {
+                                  if (!_selectedCategoryIds.contains(newCat.id)) {
+                                    _selectedCategoryIds.add(newCat.id);
+                                  }
+                                });
                               });
                               _newTopicCtrl.clear();
                               if (context.mounted) {
-                                Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Topik "${newCat.name}" berhasil ditambahkan dan dipilih!'),
@@ -713,7 +714,7 @@ class _WriteScreenState extends State<WriteScreen> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Gagal menambah topik: $e'),
+                                    content: Text('Gagal menambah topik: ${SupabaseService.mapException(e)}'),
                                     backgroundColor: AppColors.error,
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -740,45 +741,64 @@ class _WriteScreenState extends State<WriteScreen> {
                     const Divider(color: AppColors.outline, height: 1),
                     const SizedBox(height: 20),
                     Expanded(
-                      child: _categories.isEmpty
+                      child: _isLoadingCategories
                           ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
-                          : ListView(
-                              controller: ctrl,
-                              children: [
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: _categories.map((cat) {
-                                    final isChosen = _selectedCategoryId == cat.id;
-                                    return GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _selectedCategoryId = cat.id;
-                                          _selectedCategoryName = cat.name;
-                                        });
-                                        Navigator.pop(ctx);
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color: isChosen ? AppColors.primary : AppColors.surface,
-                                          borderRadius: BorderRadius.circular(100),
-                                          border: Border.all(
-                                              color: isChosen ? AppColors.primary : AppColors.outline),
-                                        ),
-                                        child: Text(
-                                          cat.name,
-                                          style: AppTextStyles.labelLg.copyWith(
-                                            fontSize: 13,
-                                            color: isChosen ? Colors.white : AppColors.onSurface,
+                          : _categories.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'Belum ada topik. Tambahkan topik di atas!',
+                                    style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                                  ),
+                                )
+                              : ListView(
+                                  controller: ctrl,
+                                  children: [
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: _categories.map((cat) {
+                                        final isChosen = _selectedCategoryIds.contains(cat.id);
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setSheetState(() {
+                                              setState(() {
+                                                if (isChosen) {
+                                                  _selectedCategoryIds.remove(cat.id);
+                                                } else {
+                                                  _selectedCategoryIds.add(cat.id);
+                                                }
+                                              });
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: isChosen ? AppColors.primary : AppColors.surface,
+                                              borderRadius: BorderRadius.circular(100),
+                                              border: Border.all(
+                                                  color: isChosen ? AppColors.primary : AppColors.outline),
+                                            ),
+                                            child: Text(
+                                              cat.name,
+                                              style: AppTextStyles.labelLg.copyWith(
+                                                fontSize: 13,
+                                                color: isChosen ? Colors.white : AppColors.onSurface,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Selesai'),
+                      ),
                     ),
                   ],
                 ),
@@ -831,6 +851,79 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
+  Widget _buildTopicChips() {
+    if (_selectedCategoryIds.isEmpty) {
+      return GestureDetector(
+        onTap: _showTagSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: AppColors.primary),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text(
+                'TAMBAH TOPIK',
+                style: AppTextStyles.labelSm.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        ..._selectedCategoryIds.map((id) {
+          final catName = _categories.firstWhere((c) => c.id == id, orElse: () => CategoryModel(id: id, name: 'Topik')).name;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.sage,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.tag_outlined, size: 14, color: AppColors.primary),
+                const SizedBox(width: 4),
+                Text(
+                  catName.toUpperCase(),
+                  style: AppTextStyles.labelSm.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        GestureDetector(
+          onTap: _showTagSheet,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary),
+            ),
+            child: const Icon(Icons.edit_outlined, size: 14, color: AppColors.primary),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPreview() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -856,21 +949,28 @@ class _WriteScreenState extends State<WriteScreen> {
                       fit: BoxFit.cover,
                     ),
             ),
-          // Category Chip
-          if (_selectedCategoryName != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.sage,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                _selectedCategoryName!.toUpperCase(),
-                style: AppTextStyles.labelSm.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+          // Category Chips
+          if (_selectedCategoryIds.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _selectedCategoryIds.map((id) {
+                final catName = _categories.firstWhere((c) => c.id == id, orElse: () => CategoryModel(id: id, name: 'Topik')).name;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.sage,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    catName.toUpperCase(),
+                    style: AppTextStyles.labelSm.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           const SizedBox(height: 16),
           // Title
@@ -1258,37 +1358,7 @@ class _WriteScreenState extends State<WriteScreen> {
                         ),
                         const SizedBox(height: 24),
                         // Topic chip selection
-                        GestureDetector(
-                          onTap: _showTagSheet,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _selectedCategoryName == null ? Colors.transparent : AppColors.sage,
-                              borderRadius: BorderRadius.circular(100),
-                              border: _selectedCategoryName == null
-                                  ? Border.all(color: AppColors.primary)
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _selectedCategoryName == null ? Icons.add : Icons.tag_outlined,
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  (_selectedCategoryName ?? 'Tambah Topik').toUpperCase(),
-                                  style: AppTextStyles.labelSm.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        _buildTopicChips(),
                         const SizedBox(height: 16),
                         // Title input
                         TextField(

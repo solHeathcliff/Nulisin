@@ -828,4 +828,26 @@ class SupabaseService {
       return null;
     }
   }
+
+  static String mapException(dynamic e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('ClientException') ||
+        msg.contains('Network') ||
+        msg.contains('connection')) {
+      return 'Koneksi internet terputus. Silakan periksa jaringan Anda.';
+    }
+    if (e is AuthException) {
+      final authMsg = e.message;
+      if (authMsg.contains('Invalid login credentials')) return 'Email atau kata sandi salah.';
+      if (authMsg.contains('Email not confirmed')) return 'Email belum dikonfirmasi. Cek inbox Anda.';
+      if (authMsg.contains('Too many requests')) return 'Terlalu banyak percobaan. Tunggu sebentar.';
+      if (authMsg.contains('User already registered')) return 'Email ini sudah terdaftar.';
+      if (authMsg.contains('Password should be')) return 'Password minimal 6 karakter.';
+      if (authMsg.contains('Unable to validate email')) return 'Format email tidak valid.';
+      return authMsg;
+    }
+    return msg;
+  }
 }

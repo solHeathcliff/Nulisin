@@ -43,54 +43,55 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passCtrl.text,
       );
       if (mounted) context.go('/main');
-    } on AuthException catch (e) {
-      setState(() {
-        _errorMsg = _mapAuthError(e.message);
-      });
     } catch (e) {
       setState(() {
-        _errorMsg = 'Terjadi kesalahan. Silakan coba lagi.';
+        _errorMsg = SupabaseService.mapException(e);
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  String _mapAuthError(String msg) {
-    if (msg.contains('Invalid login credentials')) return 'Email atau kata sandi salah.';
-    if (msg.contains('Email not confirmed')) return 'Email belum dikonfirmasi. Cek inbox Anda.';
-    if (msg.contains('Too many requests')) return 'Terlalu banyak percobaan. Tunggu sebentar.';
-    return msg;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                // Top bar
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.outline),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        context.go('/');
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  // Top bar
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.outline),
+                          ),
+                          child: const Icon(Icons.arrow_back, size: 20, color: AppColors.onSurface),
                         ),
-                        child: const Icon(Icons.arrow_back, size: 20, color: AppColors.onSurface),
                       ),
-                    ),
                     const Expanded(
                       child: Center(
                         child: _AppLogo(),
@@ -152,20 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Text('Lupa kata sandi?',
-                        style: AppTextStyles.labelLg.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppColors.outlineVariant,
-                          fontWeight: FontWeight.w500,
-                        )),
-                  ),
-                ),
+
                 if (_errorMsg != null) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -225,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
+    ),);
   }
 }
 

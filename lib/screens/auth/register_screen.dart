@@ -48,49 +48,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
         fullName: tempName,
       );
       if (mounted) context.push('/complete-profile');
-    } on AuthException catch (e) {
-      setState(() => _errorMsg = _mapAuthError(e.message));
     } catch (e) {
-      setState(() => _errorMsg = 'Terjadi kesalahan. Silakan coba lagi.');
+      setState(() => _errorMsg = SupabaseService.mapException(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  String _mapAuthError(String msg) {
-    if (msg.contains('User already registered')) return 'Email ini sudah terdaftar.';
-    if (msg.contains('Password should be')) return 'Password minimal 6 karakter.';
-    if (msg.contains('Unable to validate email')) return 'Format email tidak valid.';
-    return msg;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.outline),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        context.go('/');
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/');
+                          }
+                        },
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.outline),
+                          ),
+                          child: const Icon(Icons.arrow_back, size: 20),
                         ),
-                        child: const Icon(Icons.arrow_back, size: 20),
                       ),
-                    ),
                     const Expanded(
                       child: Center(
                         child: Text('Nulisin',
@@ -238,7 +241,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
-    );
+    ),);
   }
 }
 

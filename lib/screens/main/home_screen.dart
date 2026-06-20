@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: AppColors.surfaceBright,
               elevation: 0,
               scrolledUnderElevation: 0,
-              title: Text('Nulisin',
+              title: Text('Beranda',
                   style: GoogleFonts.sourceSerif4(
                     fontSize: 22, fontWeight: FontWeight.w700,
                     color: AppColors.primary, letterSpacing: -0.5)),
@@ -359,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.article_outlined,
                               size: 48, color: AppColors.secondary),
                           const SizedBox(height: 16),
-                          Text('Belum ada artikel di topik ini.',
+                          Text('artikel yang anda baca akan muncul disini',
                               style: AppTextStyles.bodyMd
                                   .copyWith(color: AppColors.onSurfaceVariant),
                               textAlign: TextAlign.center),
@@ -498,19 +498,42 @@ class SupabaseArticleCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.sage,
-                      borderRadius: BorderRadius.circular(100),
+                  // Category chips
+                  if (article.categories.isNotEmpty)
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: article.categories.map((cat) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.sage,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            cat.name.toUpperCase(),
+                            style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.sage,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text('UMUM',
+                          style: AppTextStyles.labelSm.copyWith(
+                              color: AppColors.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
                     ),
-                    child: Text(article.categoryName.toUpperCase(),
-                        style: AppTextStyles.labelSm.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600)),
-                  ),
                   const SizedBox(height: 8),
                   // Title
                   Text(article.title,
