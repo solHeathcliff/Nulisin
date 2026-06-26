@@ -112,10 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ],
                   ),
-                ],
-                body: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                       child: ValueListenableBuilder<ProfileModel?>(
                         valueListenable: SupabaseService.instance.profileNotifier,
                         builder: (context, profile, _) {
@@ -247,44 +244,41 @@ class _ProfileScreenState extends State<ProfileScreen>
                         }
                       ),
                     ),
-                    SliverFillRemaining(
-                      child: TabBarView(
-                        controller: _tabCtrl,
-                        children: [
-                          // Published articles
-                          _myArticles.isEmpty
-                              ? _EmptyState(
-                                  icon: Icons.article_outlined,
-                                  message: 'Belum ada artikel yang diterbitkan.',
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.all(20),
-                                  itemCount: _myArticles.length,
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 16),
-                                  itemBuilder: (ctx, i) =>
-                                      _ProfileArticleCard(article: _myArticles[i]),
-                                ),
-                          // Draft articles
-                          _myDrafts.isEmpty
-                              ? _EmptyState(
-                                  icon: Icons.description_outlined,
-                                  message: 'Tidak ada draft tersimpan.',
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.all(20),
-                                  itemCount: _myDrafts.length,
-                                  separatorBuilder: (_, _) =>
-                                      const SizedBox(height: 12),
-                                  itemBuilder: (ctx, i) =>
-                                      _DraftCard(article: _myDrafts[i]),
-                                ),
-                        ],
-                      ),
-                    ),
                   ],
+                  body: TabBarView(
+                    controller: _tabCtrl,
+                    children: [
+                      // Published articles
+                      _myArticles.isEmpty
+                          ? _EmptyState(
+                              icon: Icons.article_outlined,
+                              message: 'Belum ada artikel yang diterbitkan.',
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.all(20),
+                              itemCount: _myArticles.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 16),
+                              itemBuilder: (ctx, i) =>
+                                  _ProfileArticleCard(article: _myArticles[i]),
+                            ),
+                      // Draft articles
+                      _myDrafts.isEmpty
+                          ? _EmptyState(
+                              icon: Icons.description_outlined,
+                              message: 'Tidak ada draft tersimpan.',
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.all(20),
+                              itemCount: _myDrafts.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (ctx, i) =>
+                                  _DraftCard(article: _myDrafts[i]),
+                            ),
+                    ],
+                  ),
                 ),
-              ),
             ),
     );
   }
