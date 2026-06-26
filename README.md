@@ -1,163 +1,100 @@
-# 🚀 Nulisin — Premium Article Sharing Mobile Application
+# Nulisin — Online Publishing Platform
 
-Nulisin adalah platform mobile berbasis literasi dan sastra premium yang dirancang untuk penulis dan pembaca. Aplikasi ini mengutamakan kenyamanan membaca dengan tipografi indah, transisi mulus, dan fitur sinkronisasi data yang cepat secara real-time.
-
----
-
-## 🛠️ Technology Stack & Dependensi Utama
-
-Proyek ini dibangun menggunakan kombinasi teknologi modern yang efisien dan andal:
-
-### 1. Framework & Bahasa
-*   **Flutter (Dart SDK ^3.11.1):** SDK utama untuk pengembangan aplikasi mobile multiplatform yang cepat dan responsif.
-
-### 2. State Management (Native Approach)
-*   **ValueNotifier & ValueListenableBuilder:** Digunakan sebagai pengelola state utama aplikasi (Single Source of Truth) dipadukan dengan pemanggilan `setState` lokal.
-*   **Mengapa Memilih Native State?**
-    *   **Performa Maksimal:** Hanya merender ulang widget yang mendengarkan (*leaf widgets*), meminimalkan beban CPU.
-    *   **Hemat Memori:** Ukuran bundle aplikasi menjadi lebih kecil dan penggunaan RAM HP sangat rendah dibandingkan menggunakan package pihak ketiga seperti BLoC atau Riverpod.
-    *   **Bebas Dependency Hell:** Bebas dari ancaman pembaruan package pihak ketiga yang sering kali merusak kompatibilitas kode (*breaking changes*).
-
-### 3. Package Libraries (`pubspec.yaml`)
-| Nama Package | Versi | Kegunaan Utama |
-|---|---|---|
-| `supabase_flutter` | `^2.8.4` | Penghubung utama ke Supabase (Database, Auth, Storage, Realtime). |
-| `go_router` | `^14.6.3` | Navigasi deklaratif terintegrasi dengan Auth Guard (proteksi halaman login). |
-| `google_fonts` | `^6.2.1` | Menggunakan font premium (Source Serif 4, Outfit, Inter) secara dinamis. |
-| `shared_preferences` | `^2.3.2` | Menyimpan preferensi lokal dan konfigurasi offline cache dasar. |
-| `image_picker` | `^1.1.2` | Memilih foto profil (avatar) dan foto sampul artikel dari galeri HP. |
-| `cached_network_image` | `^3.4.1` | Caching gambar online untuk menghemat kuota data internet pengguna. |
-| `flutter_markdown` | `^0.7.7+1` | Mem-parsing dan merender teks format Markdown di halaman detail artikel. |
-| `flutter_quill` | `^11.5.0` | Editor teks kaya (*Rich Text Editor*) untuk kemudahan menulis artikel. |
+Nulisin adalah platform penerbitan daring berbasis mobile yang dirancang untuk menyederhanakan proses penulisan dan pembacaan artikel digital secara terstruktur. Aplikasi ini memecahkan kompleksitas teknis blogging konvensional dengan menghadirkan antarmuka editorial minimalis, kenyamanan membaca yang optimal, dan sinkronisasi konten secara real-time.
 
 ---
 
-## 📂 Arsitektur & Struktur Folder Proyek
+## 👥 Pemilik Proyek (Project Owners)
+Proyek ini dikembangkan oleh kelompok mahasiswa **Pemrograman Mobile — ITG 2026**:
 
-Aplikasi Nulisin menerapkan pemisahan tugas (*separation of concerns*) yang terstruktur dalam direktori `lib/`:
+| Nama Lengkap | NIM |
+|---|---|
+| **Vidya Tiara Eka Putri** | 2306005 |
+| **Bambang Surya Prana** | 2306013 |
+| **Naufal Kalam Marudi** | 2306021 |
 
+---
+
+## 🛠️ Tech Stack & Dependensi
+
+*   **Frontend Framework**: Flutter & Dart (SDK `^3.11.1`) dengan Native State Management (`ValueNotifier`).
+*   **Backend (BaaS)**: Supabase Cloud (Autentikasi, PostgreSQL Database, Realtime Sync, & File Storage).
+*   **Paket Dependensi**: `supabase_flutter`, `go_router`, `flutter_quill` (Rich Text Editor), `cached_network_image`, `flutter_markdown_plus`, `shared_preferences`, `connectivity_plus`.
+
+---
+
+## ✨ Fitur Utama
+
+*   **Autentikasi Akun**: Registrasi & login (Supabase Auth) dengan opsi pengisian data profil lengkap (foto & bio).
+*   **CRUD Artikel**: Tulis, edit, dan hapus artikel (Draft/Publish) lengkap dengan unggah gambar sampul.
+*   **Feed & Detail Artikel**: Feed artikel terurut kronologis dengan penyaringan kategori dan layout baca yang nyaman.
+*   **Komentar**: Kolom diskusi kronologis bagi pengguna terautentikasi untuk berinteraksi di bawah artikel.
+*   **Bookmark**: Simpan artikel favorit untuk dibaca nanti.
+
+---
+
+## 📱 Uji Coba Produk Akhir (Instan)
+
+Jika Anda hanya ingin langsung mencoba/menguji produk akhir tanpa melakukan setup kode sumber dan database, silakan unduh dan pasang berkas APK Nulisin melalui tautan berikut:
+👉 **[Download APK Nulisin (Google Drive)](https://drive.google.com/drive/folders/1HvIAk08j3AZBUZd1qG7U7OrTtMRwC0K4?usp=sharing)**
+
+---
+
+## ⚙️ Cara Menjalankan Proyek Secara Lokal (Development)
+
+Untuk menjalankan proyek ini dari kode sumber secara lokal, Anda perlu menyiapkan backend dan database sendiri menggunakan Supabase (BaaS).
+
+### 1. Prasyarat
+Pastikan perangkat Anda telah terpasang:
+*   Flutter SDK (>= 3.11.1) & Dart SDK
+*   Android Studio / VS Code beserta extension Flutter & Dart
+*   Emulator Android atau Google Chrome (untuk Web)
+*   Akun aktif di [Supabase](https://supabase.com)
+
+### 2. Langkah Instalasi & Setup
+
+#### Langkah A: Clone & Ambil Dependensi
+```bash
+git clone https://github.com/solHeathcliff/Nulisin.git
+cd "Aplikasi Nulisin"
+flutter pub get
 ```
-lib/
-├── core/
-│   ├── theme.dart             ← Konfigurasi tema global, warna, tipografi, & input border
-│   ├── router.dart            ← Sistem GoRouter & Auth Guards (proteksi akses)
-│   └── supabase_service.dart  ← Singleton Database Service, Models, & State Notifier
-├── screens/
-│   ├── auth/                  ← Halaman login, register, dan complete profile
-│   └── main/                  ← Halaman utama (Beranda, Jelajahi, Tulis, Simpan, Profil)
-│       └── widgets/           ← Komponen kartu artikel dan penunjang antarmuka
-└── main.dart                  ← Inisialisasi Supabase dan entry-point aplikasi
-```
 
----
+#### Langkah B: Setup Database Supabase
+1.  Buat proyek baru di dashboard **[Supabase](https://supabase.com)**.
+2.  Buka menu **SQL Editor**, salin dan jalankan seluruh query dalam berkas `supabase_migration.sql`.
+3.  Buat dua bucket dengan akses **Public** pada menu **Storage**: `avatars` dan `article-covers`.
+4.  Matikan opsi **Confirm email** pada menu **Authentication** -> **Providers** -> **Email** agar pendaftaran akun dapat langsung dicoba tanpa verifikasi email.
 
-## 🗄️ Skema Database & RLS (Supabase)
-
-Seluruh skema database ditulis secara deklaratif di dalam file `supabase_migration.sql`. Berikut adalah ringkasan struktur tabel:
-
-1.  **`profiles`:** Menyimpan informasi biodata user. Otomatis terbuat sesaat setelah registrasi berkat PostgreSQL Trigger.
-2.  **`categories`:** Menyimpan data kategori/topik tulisan.
-3.  **`articles`:** Menyimpan artikel (termasuk status draft/publish, cover image url, dan hitungan `view_count`).
-4.  **`article_categories`:** Tabel perantara (many-to-many) yang menghubungkan artikel dengan topik.
-5.  **`comments`:** Menyimpan komentar pengguna pada artikel.
-6.  **`bookmarks`:** Menyimpan ID artikel yang disimpan oleh pengguna.
-7.  **`reading_history`:** Mencatat artikel yang sudah dibaca pengguna beserta waktu bacanya.
-
-### Kebijakan Keamanan (Row Level Security - RLS):
-*   **Profiles:** Publik dapat melihat profil siapa pun (`SELECT`), namun hanya pemilik akun yang dapat memperbaruinya (`UPDATE`).
-*   **Articles:** Publik hanya dapat melihat artikel yang berstatus `is_published = true`. Penulis memiliki akses penuh CRUD atas artikel buatannya sendiri.
-*   **Bookmarks & History:** Hanya pemilik akun yang diizinkan melihat, menambah, atau menghapus bookmark dan riwayat bacanya sendiri.
-
----
-
-## 🚀 Panduan Setup Project dari Nol
-
-Ikuti langkah-langkah berikut untuk menjalankan database Supabase dan aplikasi di laptop baru:
-
-### Langkah 1 — Jalankan SQL Migration
-1.  Buka dashboard **[supabase.com](https://supabase.com)**, login, dan buat project baru bernama `nulisin`.
-2.  Masuk ke menu **SQL Editor** di sidebar kiri.
-3.  Klik **"New Query"**, salin seluruh konten di file `supabase_migration.sql` dan tempelkan.
-4.  Klik **"Run"** (atau Ctrl + Enter). Pastikan proses migrasi selesai tanpa pesan error.
-
-### Langkah 2 — Ambil & Setel API Credentials
-1.  Masuk ke menu **Settings** → **API** di dashboard Supabase.
-2.  Salin nilai **Project URL** dan **anon / public** API Key.
-3.  Buka file `lib/core/supabase_service.dart` di IDE Anda, lalu ganti nilai variabel berikut:
+#### Langkah C: Konfigurasi Kredensial di Kode Sumber
+1.  Salin **Project URL** dan **anon public API Key** dari menu **Settings → API** di dashboard Supabase Anda.
+2.  Buka berkas `lib/core/supabase_service.dart` di proyek lokal Anda, lalu ganti nilai variabel berikut:
     ```dart
     static const String supabaseUrl = 'URL_SUPABASE_ANDA';
     static const String supabaseAnonKey = 'ANON_KEY_SUPABASE_ANDA';
     ```
 
-### Langkah 3 — Nonaktifkan Verifikasi Email (Opsional - Development)
-1.  Buka menu **Authentication** → **Email Providers** di dashboard Supabase.
-2.  Matikan opsi **"Confirm email"** agar Anda bisa langsung login setelah registrasi tanpa membuka email konfirmasi.
-3.  Klik **Save**.
-
-### Langkah 4 — Jalankan Aplikasi
-Jalankan perintah berikut pada terminal di folder proyek:
+#### Langkah D: Jalankan Proyek
+Jalankan perintah berikut di terminal Anda:
 ```bash
-flutter pub get
+# Jalankan di Google Chrome (Web)
+flutter run -d chrome
+
+# Jalankan di Emulator / Perangkat Android
 flutter run
 ```
-Untuk menguji di web (Chrome):
-```bash
-flutter run -d chrome
-```
 
 ---
 
-## 📈 Log Perjalanan & Milestones Pengembangan
+## 📖 Cara Penggunaan (Alur Kerja)
 
-### Minggu 1: UI Slicing & Navigasi Deklaratif
-*   Mendesain UI premium untuk Landing Page, Login, Register, Beranda, Jelajahi, Tulis, Simpan, dan Profil.
-*   Implementasi sistem navigasi modern menggunakan `GoRouter` dengan sistem perlindungan halaman (*Auth Guards*).
-
-### Minggu 2: Integrasi Supabase Cloud & CRUD Dasar
-*   Menghubungkan aplikasi ke layanan Database, Autentikasi, dan Buckets Storage milik Supabase.
-*   Implementasi fitur registrasi, login, dan logout pengguna.
-*   Mengaktifkan penulisan artikel dengan opsi Draft / Publish beserta fitur unggah foto sampul.
-
-### Minggu 3: Fitur Sempurna, Realtime & Build Rilis
-*   **Realtime Sync:** Integrasi Supabase Realtime Channel di halaman Beranda & Jelajahi untuk deteksi otomatis perubahan database secara instan (dilakukan dengan *Silent Update* latar belakang tanpa spinner mengganggu).
-*   **Optimasi Halaman Bookmark:**
-    *   Menerapkan desain datar transparan pada kolom pencarian (*no double-border*).
-    *   Integrasi **Category Chips** dinamis (mengelompokkan bookmark berdasarkan topik aktif).
-    *   Pencarian teks instan multi-kolom (mencocokkan judul, penulis, atau kategori).
-*   **Pagination (Infinite Scroll):** Penerapan ScrollController untuk membatasi pemuatan awal (15 item) guna menghemat data internet dan RAM handphone.
-*   **Validasi Topik Baru (2-State):** Topik kustom baru yang didaftarkan saat menulis draf tidak akan bocor ke halaman publik sebelum artikel bersangkutan resmi diterbitkan.
-*   **Build APK:** Penyelesaian build rilis final di direktori `build/app/outputs/flutter-apk/app-release.apk` (61.7 MB).
-
----
-
-## 👥 Panduan Kerja Tim (Git & GitHub Flow)
-
-Demi menjaga keutuhan kode utama, seluruh anggota kelompok wajib menaati aturan kerja berikut:
-
-### 1. Perbarui Kode Sebelum Mulai Bekerja
-Setiap pagi atau sebelum mengetik kode baru, pastikan Anda menarik versi terbaru dari repositori online:
-```bash
-git checkout main
-git pull origin main
+```mermaid
+flowchart TD
+    A([Mulai]) --> B[Landing Page & Login/Daftar]
+    B --> C[Lengkapi Profil Foto & Bio]
+    C --> D[Beranda & Jelajahi Kategori]
+    D --> E[Baca Artikel & Beri Komentar]
+    D --> F[Tulis Artikel Editor Teks + Cover]
+    F --> G[Terbitkan / Simpan Draft]
+    D --> H[Simpan ke Bookmark Offline]
 ```
-
-### 2. Gunakan Branch Khusus
-Jangan pernah menulis kode atau melakukan push langsung di branch `main`. Buatlah branch baru untuk tugas Anda:
-```bash
-git checkout -b nama-tugas-anda
-```
-*(Contoh: `git checkout -b slicing-login` atau `git checkout -b integrasi-komentar`)*
-
-### 3. Simpan & Push Hasil Kerja
-Setelah pekerjaan selesai atau mencapai progres harian yang stabil:
-```bash
-git add .
-git commit -m "Tulis penjelasan singkat apa yang Anda ubah"
-git push -u origin nama-tugas-anda
-```
-
-### 4. Buat Pull Request (PR)
-1.  Buka repositori tim di GitHub lewat browser.
-2.  Klik tombol **"Compare & pull request"** pada branch yang baru Anda push.
-3.  Tulis deskripsi progres kerja Anda dan klik **"Create pull request"**.
-4.  Kabari Ketua Kelompok/Admin di grup chat untuk meninjau, menyetujui (*Approve*), dan menyatukan (*Merge*) kode Anda ke branch `main`.
