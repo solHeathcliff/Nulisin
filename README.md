@@ -23,13 +23,19 @@ Proyek ini dikembangkan oleh kelompok mahasiswa **Pemrograman Mobile — ITG 202
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Halaman & Fitur Utama
 
-*   **Autentikasi Akun**: Registrasi & login (Supabase Auth) dengan opsi pengisian data profil lengkap (foto & bio).
-*   **CRUD Artikel**: Tulis, edit, dan hapus artikel (Draft/Publish) lengkap dengan unggah gambar sampul.
-*   **Feed & Detail Artikel**: Feed artikel terurut kronologis dengan penyaringan kategori dan layout baca yang nyaman.
-*   **Komentar**: Kolom diskusi kronologis bagi pengguna terautentikasi untuk berinteraksi di bawah artikel.
-*   **Bookmark**: Simpan artikel favorit untuk dibaca nanti.
+### 📱 5 Halaman Utama (Navigation Tabs)
+1.  **Beranda (Home)**: Berfungsi menampilkan artikel yang relevan secara personal. Ketika Anda membaca artikel dari halaman Jelajahi, artikel tersebut otomatis terekam dan akan muncul di bagian atas halaman Beranda sebagai riwayat bacaan untuk memudahkan akses membaca kembali.
+2.  **Jelajahi (Explore)**: Tempat menelusuri seluruh artikel publik secara global. Artikel diurutkan berdasarkan tingkat kepopuleran (jumlah klik pembaca) dan tanggal publikasi terbaru, lengkap dengan penyaringan kategori/topik yang interaktif.
+3.  **Tulis (Write)**: Halaman editor artikel mandiri yang didukung oleh *Rich Text Editor* (untuk teks tebal, miring, kutipan, dll.), pengisian judul, pengunggahan gambar sampul (*cover*), pemilihan kategori, dan opsi penyimpanan sebagai Draft atau publikasi langsung (Publish).
+4.  **Simpan (Bookmark)**: Berisi koleksi artikel favorit yang telah Anda tandai. Halaman ini memudahkan Anda mencari dan membaca kembali artikel-artikel pilihan yang dikelompokkan berdasarkan kategori.
+5.  **Profil (Profile)**: Menampilkan biodata penulis (foto, nama, profesi, bio) beserta pembagian tab **Stories** (koleksi artikel yang dipublikasikan ke publik) dan tab **Drafts** (koleksi draf tulisan pribadi yang masih bisa disunting).
+
+### 🛠️ Fitur Pendukung
+*   **Autentikasi Akun**: Sistem registrasi & login aman berbasis email dan kata sandi menggunakan Supabase Auth.
+*   **Kolom Diskusi (Komentar)**: Kolom tanggapan kronologis di bawah artikel yang membatasi pengiriman komentar hanya untuk pengguna yang telah login.
+*   **Sinkronisasi Realtime**: Pembaruan feed artikel secara langsung tanpa perlu memuat ulang halaman (*silent update*).
 
 ---
 
@@ -55,14 +61,14 @@ Pastikan perangkat Anda telah terpasang:
 
 #### Langkah A: Clone & Ambil Dependensi
 ```bash
-git clone https://github.com/solHeathcliff/Nulisin.git
+git clone https://github.com/wonhee9/Nulisin.git
 cd "Aplikasi Nulisin"
 flutter pub get
 ```
 
 #### Langkah B: Setup Database Supabase
 1.  Buat proyek baru di dashboard **[Supabase](https://supabase.com)**.
-2.  Buka menu **SQL Editor**, salin dan jalankan seluruh query dalam berkas `supabase_migration.sql`.
+2.  Buka menu **SQL Editor**, salin dan jalankan query database yang ada di berkas **[supabase_migration.sql](https://github.com/wonhee9/Nulisin/blob/main/supabase_migration.sql)**.
 3.  Buat dua bucket dengan akses **Public** pada menu **Storage**: `avatars` dan `article-covers`.
 4.  Matikan opsi **Confirm email** pada menu **Authentication** -> **Providers** -> **Email** agar pendaftaran akun dapat langsung dicoba tanpa verifikasi email.
 
@@ -96,5 +102,5 @@ flowchart TD
     D --> E[Baca Artikel & Beri Komentar]
     D --> F[Tulis Artikel Editor Teks + Cover]
     F --> G[Terbitkan / Simpan Draft]
-    D --> H[Simpan ke Bookmark Offline]
+    D --> H[Simpan ke Bookmark ]
 ```
